@@ -46,7 +46,7 @@ def update_startup_registry(enable):
     except FileNotFoundError:
         pass  # Key doesn't exist yet
     except Exception as e:
-        print(f"Error updating startup registry: {e}")
+        print(f"Error updating startup Registry: {e}")
 
 def save_config(config):
     with open(CONFIG_FILE, "w") as f:
