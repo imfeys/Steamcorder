@@ -29,6 +29,12 @@ pip install -r requirements.txt
 python steamcorder.py
 ```
 
+###   Compile exe yourself
+```sh
+pyinstaller --noconsole --onefile --icon=icon.ico --add-data "icon.ico;." --add-data "icon.png;." --add-data "discord_icon.png;." Steamcorder.py
+
+```
+
 ---
 
 ## 🔧 Setup & Usage
