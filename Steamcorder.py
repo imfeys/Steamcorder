@@ -402,7 +402,7 @@ if __name__ == "__main__":
     config = load_config()
     DELETE_AFTER_UPLOAD = config.get("delete_after_upload", False)
 
-    myappid = 'steamcorder.v0.4.1'  # Unique identifier for Windows taskbar
+    myappid = 'steamcorder.v0.5'  # Unique identifier for Windows taskbar
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(resource_path("icon.ico")))
