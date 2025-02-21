@@ -214,7 +214,7 @@ class SettingsDialog(QDialog):
 class ScreenshotUploaderApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Steamcorder v0.4.1")
+        self.setWindowTitle("Steamcorder v0.5")
         self.setWindowIcon(QIcon(resource_path("icon.ico")))
         self.setGeometry(100, 100, 500, 400)
         
@@ -228,7 +228,7 @@ class ScreenshotUploaderApp(QWidget):
 
         # System tray icon
         self.tray_icon = QSystemTrayIcon(QIcon(resource_path("icon.ico")), self)
-        self.tray_icon.setToolTip("Steamcorder v0.4.1")
+        self.tray_icon.setToolTip("Steamcorder v0.")
         self.tray_menu = QMenu(self)
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(self.quit_app)
