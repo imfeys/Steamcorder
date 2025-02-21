@@ -2,9 +2,9 @@ import os
 import sys
 import time
 import requests
-import sys
 import json
-
+import ctypes
+import winreg
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -19,13 +19,13 @@ from PyQt6.QtGui import (
     QDesktopServices
 )
 from PyQt6.QtCore import (
-    Qt, QThread, pyqtSignal, QEvent, QUrl
+    Qt, QThread, pyqtSignal, QUrl
 )
 
 # Default Configuration
 CONFIG_FILE = "config.json"
 WATCH_DIRECTORY = r''
-DELETE_AFTER_UPLOAD = False
+DELETE_AFTER_UPLOAD = False  # Global variable for delete after upload
 ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
 
 def load_config():
@@ -33,6 +33,10 @@ def load_config():
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
     return {}
+
+def save_config(config):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f)
 
 def update_startup_registry(enable):
     app_path = os.path.abspath(sys.argv[0])
@@ -46,11 +50,7 @@ def update_startup_registry(enable):
     except FileNotFoundError:
         pass  # Key doesn't exist yet
     except Exception as e:
-        print(f"Error updating startup Registry: {e}")
-
-def save_config(config):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f)
+        print(f"Error updating startup registry: {e}")
 
 class FileHandler(FileSystemEventHandler):
     def __init__(self, log_callback, webhook_url, delay_seconds):
@@ -62,21 +62,23 @@ class FileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         file_path = event.src_path
+        # Record the time when the screenshot is detected
+        creation_time = time.time()
         self.log_callback(f"New file detected: {file_path}")
 
-        # Wait for the user-specified delay to ensure file is fully written
+        # Wait for the specified delay to ensure file is fully written
         if self.delay_seconds > 0:
             time.sleep(self.delay_seconds)
 
         if self.is_allowed_file(file_path):
-            self.upload_file(file_path)
+            self.upload_file(file_path, creation_time)
         else:
             self.log_callback(f"Ignored file (wrong extension): {file_path}")
 
     def is_allowed_file(self, file_path):
         return os.path.splitext(file_path)[1].lower() in ALLOWED_EXTENSIONS
 
-    def upload_file(self, file_path):
+    def upload_file(self, file_path, creation_time):
         if not self.webhook_url:
             self.log_callback("No webhook URL set! Please enter one.")
             return
@@ -85,10 +87,20 @@ class FileHandler(FileSystemEventHandler):
             with open(file_path, 'rb') as f:
                 file_data = f.read()
             files = {'file': (os.path.basename(file_path), file_data)}
+            
+            # Time the upload (request) duration
+            start_request = time.perf_counter()
             response = requests.post(self.webhook_url, files=files)
+            upload_duration = time.perf_counter() - start_request
+
+            # Total time from file detection (screenshot creation) to upload completion
+            total_duration = time.time() - creation_time
 
             if response.status_code == 200:
-                self.log_callback(f"Uploaded {file_path} to Discord.")
+                self.log_callback(
+                    f"Uploaded {file_path} to Discord in {upload_duration:.2f} sec "
+                    f"(upload request time). Total duration from screenshot: {total_duration:.2f} sec."
+                )
                 if DELETE_AFTER_UPLOAD:
                     os.remove(file_path)
                     self.log_callback(f"Deleted {file_path} after upload.")
@@ -121,7 +133,11 @@ class MonitoringThread(QThread):
             self.observer.join()
             self.log_signal.emit("Monitoring stopped.")
 
-import winreg
+def resource_path(relative_path):
+    """ Get the absolute path to the resource (needed for PyInstaller onefile mode) """
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return relative_path
 
 class SettingsDialog(QDialog):
     def __init__(self, config, parent=None):
@@ -132,7 +148,7 @@ class SettingsDialog(QDialog):
 
         layout = QVBoxLayout()
 
-        # Delay row
+        # Upload delay
         delay_layout = QHBoxLayout()
         delay_label = QLabel("Upload Delay (seconds):")
         self.delay_spin = QSpinBox()
@@ -147,17 +163,22 @@ class SettingsDialog(QDialog):
         self.minimize_cb.setChecked(self.config.get("minimize_on_exit", False))
         layout.addWidget(self.minimize_cb)
         
-        # Start on Windows Startup Checkbox
+        # Start on Windows startup
         self.startup_cb = QCheckBox("Start on Windows startup")
         self.startup_cb.setChecked(self.config.get("start_on_startup", False))
         layout.addWidget(self.startup_cb)
+
+        # Delete after upload option
+        self.delete_after_upload_cb = QCheckBox("Delete files after upload")
+        self.delete_after_upload_cb.setChecked(self.config.get("delete_after_upload", False))
+        layout.addWidget(self.delete_after_upload_cb)
 
         # How to button
         self.how_to_button = QPushButton("How to?")
         self.how_to_button.clicked.connect(self.show_how_to)
         layout.addWidget(self.how_to_button)
 
-        # OK/Cancel - must use StandardButton for PyQt6
+        # OK/Cancel buttons
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
@@ -168,14 +189,16 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
     def on_ok(self):
-        # Save startup setting
         self.config["start_on_startup"] = self.startup_cb.isChecked()
         update_startup_registry(self.startup_cb.isChecked())
-        save_config(self.config)
-        self.accept()
-        # Save config changes
+
         self.config["upload_delay"] = self.delay_spin.value()
         self.config["minimize_on_exit"] = self.minimize_cb.isChecked()
+        self.config["delete_after_upload"] = self.delete_after_upload_cb.isChecked()
+
+        global DELETE_AFTER_UPLOAD
+        DELETE_AFTER_UPLOAD = self.delete_after_upload_cb.isChecked()
+
         save_config(self.config)
         self.accept()
 
@@ -186,22 +209,11 @@ class SettingsDialog(QDialog):
             "3. Paste the webhook into the field above.\n"
             "4. Adjust the optional delay if needed, then press 'Start Monitoring' to begin."
         )
-        QMessageBox.information(
-            self,
-            "How to Use Steamcorder",
-            instructions
-        )
-
-def resource_path(relative_path):
-    """ Get the absolute path to the resource (needed for PyInstaller onefile mode) """
-    if getattr(sys, 'frozen', False):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return relative_path
+        QMessageBox.information(self, "How to Use Steamcorder", instructions)
 
 class ScreenshotUploaderApp(QWidget):
     def __init__(self):
         super().__init__()
-        # Bump version to 0.4.1
         self.setWindowTitle("Steamcorder v0.4.1")
         self.setWindowIcon(QIcon(resource_path("icon.ico")))
         self.setGeometry(100, 100, 500, 400)
@@ -211,42 +223,30 @@ class ScreenshotUploaderApp(QWidget):
         self.watch_directory = self.config.get("watch_directory", "") or ""
         self.monitoring_thread = None
 
-        # Track if the webhook was hidden
+        # Track webhook visibility
         self.webhook_hidden = bool(self.config.get("webhook_hidden", False))
 
         # System tray icon
         self.tray_icon = QSystemTrayIcon(QIcon(resource_path("icon.ico")), self)
         self.tray_icon.setToolTip("Steamcorder v0.4.1")
-
         self.tray_menu = QMenu(self)
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(self.quit_app)
         self.tray_menu.addAction(quit_action)
-        
-        
-        
-        
-        
-        
-        restore_action = QAction("Restore Window")
+        restore_action = QAction("Restore Window", self)
         restore_action.triggered.connect(self.restore_window)
         self.tray_menu.addAction(restore_action)
-        
-        
-        
         self.tray_icon.setContextMenu(self.tray_menu)
-
         self.tray_icon.activated.connect(self.tray_icon_clicked)
         self.tray_icon.show()
 
         main_layout = QVBoxLayout()
 
-        # top row
+        # Top row: watch folder, Discord button, settings button
         top_row = QHBoxLayout()
         self.dir_label = QLabel(f"Watching: {self.watch_directory}")
         top_row.addWidget(self.dir_label)
 
-        # Discord link icon
         self.discord_button = QPushButton()
         self.discord_button.setIcon(QIcon(resource_path("discord_icon.png")))
         self.discord_button.setFixedSize(28, 28)
@@ -254,25 +254,20 @@ class ScreenshotUploaderApp(QWidget):
         self.discord_button.clicked.connect(self.open_discord_link)
         top_row.addWidget(self.discord_button)
 
-        # Settings button
         self.settings_button = QPushButton("⚙️")
-        self.settings_button.setFixedSize(28, 28)  # Ensure matching size with discord_button
-        
-        
-        self.settings_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        
         self.settings_button.setFixedSize(30, 30)
+        self.settings_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.settings_button.clicked.connect(self.open_settings)
         top_row.addWidget(self.settings_button)
 
         main_layout.addLayout(top_row)
 
-        # select folder
+        # Select folder button
         self.select_button = QPushButton("Select Folder")
         self.select_button.clicked.connect(self.select_folder)
         main_layout.addWidget(self.select_button)
 
-        # webhook row
+        # Webhook row
         webhook_row = QHBoxLayout()
         self.webhook_input = QLineEdit()
         self.webhook_input.setPlaceholderText("Enter Discord Webhook URL")
@@ -283,7 +278,6 @@ class ScreenshotUploaderApp(QWidget):
         self.toggle_webhook_button.setFixedSize(50, 30)
         self.toggle_webhook_button.clicked.connect(self.toggle_webhook_visibility)
         webhook_row.addWidget(self.toggle_webhook_button)
-
         main_layout.addLayout(webhook_row)
 
         if self.webhook_hidden:
@@ -292,29 +286,23 @@ class ScreenshotUploaderApp(QWidget):
         else:
             self.toggle_webhook_button.setText("Hide")
 
+        # Save webhook button
         self.save_webhook_button = QPushButton("Save Webhook")
         self.save_webhook_button.clicked.connect(self.save_webhook)
         main_layout.addWidget(self.save_webhook_button)
 
+        # Monitor button
         self.monitor_button = QPushButton("Start Monitoring")
         self.monitor_button.clicked.connect(self.toggle_monitoring)
         main_layout.addWidget(self.monitor_button)
 
-        
-        
-        
-        
-
-        for btn in [
-        self.select_button,
-        self.save_webhook_button,
-        self.monitor_button
-        ]:
+        for btn in [self.select_button, self.save_webhook_button, self.monitor_button]:
             btn.setMinimumHeight(40)
             font = btn.font()
             font.setBold(True)
             btn.setFont(font)
 
+        # Log area
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         main_layout.addWidget(self.log_text)
@@ -323,10 +311,9 @@ class ScreenshotUploaderApp(QWidget):
 
     def open_settings(self):
         try:
-            dlg = SettingsDialog(self.config)  # no parent to avoid odd crashes
+            dlg = SettingsDialog(self.config)
             result = dlg.exec()
             if result == QDialog.DialogCode.Accepted:
-                # reload config in case user changed things
                 self.config = load_config()
         except Exception as e:
             print("[ERROR] Opening settings:", e)
@@ -362,7 +349,6 @@ class ScreenshotUploaderApp(QWidget):
 
     def toggle_monitoring(self):
         if self.monitoring_thread and self.monitoring_thread.isRunning():
-            # Stop monitoring properly before deleting thread
             self.monitoring_thread.stop()
             self.monitoring_thread.wait()
             self.monitoring_thread = None
@@ -378,9 +364,6 @@ class ScreenshotUploaderApp(QWidget):
             self.monitor_button.setText("Stop Monitoring")
 
     def closeEvent(self, event):
-        if self.monitoring_thread and self.monitoring_thread.isRunning():
-            self.monitoring_thread.stop()
-            self.monitoring_thread.wait()
         if self.config.get("minimize_on_exit", False):
             self.hide()
             self.tray_icon.showMessage(
@@ -391,91 +374,10 @@ class ScreenshotUploaderApp(QWidget):
             )
             event.ignore()
         else:
-            super().closeEvent(event)
-        if self.monitoring_thread and self.monitoring_thread.isRunning():
-            # Stop monitoring
-            self.monitoring_thread.stop()
-            self.monitoring_thread = None
-            self.monitor_button.setText("Start Monitoring")
-        else:
-            if not self.webhook_url:
-                QMessageBox.warning(self, "Error", "Please enter a webhook URL.")
-                return
-            delay_seconds = self.config.get("upload_delay", 2)
-            self.monitoring_thread = MonitoringThread(self.watch_directory, self.webhook_url, delay_seconds)
-            self.monitoring_thread.log_signal.connect(self.log)
-            self.monitoring_thread.start()
-            self.monitor_button.setText("Stop Monitoring")
-        if self.monitoring_thread and self.monitoring_thread.isRunning():
-            # Stop monitoring
-            self.monitoring_thread.stop()
-            self.monitoring_thread = None
-            self.monitor_button.setText("Start Monitoring")
-        else:
-            if not self.webhook_url:
-                QMessageBox.warning(self, "Error", "Please enter a webhook URL.")
-                return
-            delay_seconds = self.config.get("upload_delay", 2)
-            self.monitoring_thread = MonitoringThread(self.watch_directory, self.webhook_url, delay_seconds)
-            self.monitoring_thread.log_signal.connect(self.log)
-            self.monitoring_thread.start()
-            self.monitor_button.setText("Stop Monitoring")
-        if self.monitoring_thread and self.monitoring_thread.isRunning():
-            # Stop monitoring
-            self.monitoring_thread.stop()
-            self.monitoring_thread = None
-            self.monitor_button.setText("Start Monitoring")
-        else:
-            if not self.webhook_url:
-                QMessageBox.warning(self, "Error", "Please enter a webhook URL.")
-                return
-            delay_seconds = self.config.get("upload_delay", 2)
-            self.monitoring_thread = MonitoringThread(self.watch_directory, self.webhook_url, delay_seconds)
-            self.monitoring_thread.log_signal.connect(self.log)
-            self.monitoring_thread.start()
-            self.monitor_button.setText("Stop Monitoring")
-        if self.monitoring_thread and self.monitoring_thread.isRunning():
-            # Stop monitoring
-            self.monitoring_thread.stop()
-            self.monitoring_thread = None
-            self.monitor_button.setText("Start Monitoring")
-        else:
-            if not self.webhook_url:
-                QMessageBox.warning(self, "Error", "Please enter a webhook URL.")
-                return
-            delay_seconds = self.config.get("upload_delay", 2)
-            self.monitoring_thread = MonitoringThread(self.watch_directory, self.webhook_url, delay_seconds)
-            self.monitoring_thread.log_signal.connect(self.log)
-            self.monitoring_thread.start()
-            self.monitor_button.setText("Stop Monitoring")
-        if self.monitoring_thread and self.monitoring_thread.isRunning():
-            self.monitoring_thread.stop()
-            self.monitoring_thread = None
-            self.monitor_button.setText("Start Monitoring")
-        else:
-            if not self.webhook_url:
-                QMessageBox.warning(self, "Error", "Please enter a webhook URL.")
-                return
-            delay_seconds = self.config.get("upload_delay", 2)
-            self.monitoring_thread = MonitoringThread(self.watch_directory, self.webhook_url, delay_seconds)
-            self.monitoring_thread.log_signal.connect(self.log)
-            self.monitoring_thread.start()
-            self.monitor_button.setText("Stop Monitoring")
-        if not self.webhook_url:
-            QMessageBox.warning(self, "Error", "Please enter a webhook URL.")
-            return
-        delay_seconds = self.config.get("upload_delay", 2)
-        self.monitoring_thread = MonitoringThread(self.watch_directory, self.webhook_url, delay_seconds)
-        self.monitoring_thread.log_signal.connect(self.log)
-        self.monitoring_thread.start()
-        self.monitor_button.setText("Stop Monitoring")
-        
-
-    
-        if self.monitoring_thread:
-            self.monitoring_thread.stop()
-        self.monitor_button.setText("Start Monitoring")
-        self.stop_button.setEnabled(False)
+            if self.monitoring_thread and self.monitoring_thread.isRunning():
+                self.monitoring_thread.stop()
+                self.monitoring_thread.wait()
+            event.accept()
 
     def log(self, message):
         self.log_text.append(message)
@@ -491,34 +393,19 @@ class ScreenshotUploaderApp(QWidget):
         self.showNormal()
         self.activateWindow()
 
-    def closeEvent(self, event):
-        if self.config.get("minimize_on_exit", False):
-            self.hide()
-            self.tray_icon.showMessage(
-                "Steamcorder",
-                "Steamcorder is still running in the background.",
-                QSystemTrayIcon.MessageIcon.Information,
-                2000
-            )
-            event.ignore()
-        else:
-            super().closeEvent(event)
-
     def quit_app(self):
         self.tray_icon.hide()
         QApplication.quit()
 
-import ctypes
-
 if __name__ == "__main__":
+    # Initialize DELETE_AFTER_UPLOAD from config
+    config = load_config()
+    DELETE_AFTER_UPLOAD = config.get("delete_after_upload", False)
+
     myappid = 'steamcorder.v0.4.1'  # Unique identifier for Windows taskbar
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(resource_path("icon.ico")))
-
-    if not QApplication.instance():
-        app = QApplication(sys.argv)
-
     window = ScreenshotUploaderApp()
     window.show()
     sys.exit(app.exec())
