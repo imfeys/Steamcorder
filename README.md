@@ -12,6 +12,11 @@ Steamcorder is a **Python-based GUI application** that automatically uploads you
 ✅ **Startup Option**: Can start with Windows.  
 ✅ **Easy-to-Use GUI**: Built with **PyQt6** for a smooth user experience.  
 
+TO DO LIST CURRENTLY:
+redesign GUI
+New logo
+exe file
+
 ---
 
 ## 📦 Installation
