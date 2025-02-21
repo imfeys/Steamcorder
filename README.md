@@ -1,4 +1,4 @@
-# Steamcorder
+# Steamcorder - Automatically upload Steam Screenshots to Discord
 
 Steamcorder is a **Python-based GUI application** that automatically uploads your Steam screenshots to a **Discord server** via a webhook.
 ---
