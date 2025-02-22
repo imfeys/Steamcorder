@@ -67,7 +67,10 @@ pyinstaller --noconsole --onefile --icon=icon.ico --add-data "icon.ico;." --add-
 ---
 
 ## 🎨 Screenshot
-![image](https://github.com/user-attachments/assets/df5a7254-47c8-4210-af51-31493d4644dd)
+![image](https://github.com/user-attachments/assets/d86a3543-a2e1-46ca-8cfb-f625ce9b0498)
+![image](https://github.com/user-attachments/assets/4ce27699-d8de-429a-88b9-0de5a0a5a346)
+
+
 
 
 ---
