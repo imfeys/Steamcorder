@@ -23,23 +23,26 @@ def resource_path(relative_path):
     """Get the absolute path to a resource, works in development and with PyInstaller"""
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 # ----------------------------------------------------------------------
-# Global configuration and helper functions
+# Config file handling using a fixed path relative to this script
 # ----------------------------------------------------------------------
 CONFIG_FILE = "config.json"
-ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
-DELETE_AFTER_UPLOAD = False  # updated at startup
+
+def get_config_path():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG_FILE)
 
 def load_config():
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+    config_path = get_config_path()
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 def save_config(config):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+    config_path = get_config_path()
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4)
 
 def update_startup_registry(enable):
@@ -55,6 +58,12 @@ def update_startup_registry(enable):
         pass
     except Exception as e:
         print(f"Error updating startup registry: {e}")
+
+# ----------------------------------------------------------------------
+# Global variables
+# ----------------------------------------------------------------------
+ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
+DELETE_AFTER_UPLOAD = False  # will be updated at startup
 
 # ----------------------------------------------------------------------
 # File monitoring classes
@@ -85,7 +94,7 @@ class FileHandler(FileSystemEventHandler):
         if not self.webhook_url:
             self.log_callback("No webhook URL set! Please enter one.")
             return
-        # Retry mechanism: wait up to 1.5 seconds (in 0.5s intervals) for the file to exist.
+        # Retry mechanism: wait up to 1.5 sec for the file to exist.
         attempts = 0
         max_attempts = 3
         while attempts < max_attempts and not os.path.exists(file_path):
@@ -144,7 +153,7 @@ class MonitoringThread(QThread):
 # Settings tab widget (includes Setup section)
 # ----------------------------------------------------------------------
 class SettingsTab(QWidget):
-    # Signal to notify that settings were updated (e.g., new delay value)
+    # Signal to notify that settings were updated (with the new delay value)
     settings_updated = pyqtSignal(int)
 
     def __init__(self, config):
@@ -158,7 +167,6 @@ class SettingsTab(QWidget):
         # --- Setup Section ---
         setup_group = QGroupBox("Setup")
         setup_layout = QVBoxLayout()
-
         # Folder row
         folder_layout = QHBoxLayout()
         folder_label = QLabel("Folder Path:")
@@ -170,7 +178,6 @@ class SettingsTab(QWidget):
         folder_layout.addWidget(self.folder_edit, stretch=1)
         folder_layout.addWidget(folder_btn)
         setup_layout.addLayout(folder_layout)
-
         # Webhook row
         webhook_layout = QHBoxLayout()
         webhook_label = QLabel("Webhook URL:")
@@ -185,7 +192,6 @@ class SettingsTab(QWidget):
         webhook_layout.addWidget(save_webhook_btn)
         webhook_layout.addWidget(self.toggle_webhook_btn)
         setup_layout.addLayout(webhook_layout)
-
         setup_group.setLayout(setup_layout)
         layout.addWidget(setup_group)
 
@@ -280,7 +286,7 @@ class SettingsTab(QWidget):
         update_startup_registry(self.startup_cb.isChecked())
         save_config(self.config)
         QMessageBox.information(self, "Settings", "Settings saved successfully.")
-        # Emit signal with new delay so main window can update monitoring thread delay.
+        # Emit the new delay so the main window can update the monitoring thread.
         self.settings_updated.emit(self.delay_spin.value())
 
     def join_discord(self):
@@ -301,7 +307,7 @@ class SteamcorderMainWindow(QMainWindow):
         DELETE_AFTER_UPLOAD = self.config.get("delete_after_upload", False)
         self.init_tray_icon()
         self.init_ui()
-        # Connect settings signal to update delay if monitoring is active.
+        # Connect the settings_updated signal from the Settings tab.
         self.settings_tab.settings_updated.connect(self.update_monitoring_delay)
         if self.config.get("monitoring_active", False):
             if self.webhook_url and self.watch_directory:
@@ -309,7 +315,7 @@ class SteamcorderMainWindow(QMainWindow):
 
     def init_tray_icon(self):
         self.tray_icon = QSystemTrayIcon(QIcon(resource_path("icon.ico")), self)
-        self.tray_icon.setToolTip("Steamcorder v0.6.0")
+        self.tray_icon.setToolTip("Steamcorder v0.6.1")
         self.tray_menu = QMenu(self)
 
         quit_action = self.tray_menu.addAction("Quit")
@@ -323,7 +329,7 @@ class SteamcorderMainWindow(QMainWindow):
         self.tray_icon.show()
 
     def init_ui(self):
-        self.setWindowTitle("Steamcorder v0.6.0")
+        self.setWindowTitle("Steamcorder v0.6.1")
         self.setWindowIcon(QIcon(resource_path("icon.ico")))
         self.setGeometry(100, 100, 500, 330)
         central_widget = QWidget()
@@ -366,7 +372,7 @@ class SteamcorderMainWindow(QMainWindow):
             self.log(f"Delay updated to {new_delay} seconds.")
 
     def toggle_monitoring(self):
-        # Always reload the config to get the latest values.
+        # Reload config to get latest values.
         self.config = load_config()
         self.webhook_url = self.config.get("webhook_url", "")
         self.watch_directory = self.config.get("watch_directory", "")
@@ -429,11 +435,15 @@ def main():
     global DELETE_AFTER_UPLOAD
     config = load_config()
     DELETE_AFTER_UPLOAD = config.get("delete_after_upload", False)
-    myappid = 'steamcorder.v0.6.0'
+    myappid = 'steamcorder.v0.6.1'
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     app = QApplication(sys.argv)
     window = SteamcorderMainWindow()
-    window.show()
+    # Start minimized if configured.
+    if window.config.get("minimize_on_exit", False):
+        window.hide()
+    else:
+        window.show()
     sys.exit(app.exec())
 
 if __name__ == "__main__":
