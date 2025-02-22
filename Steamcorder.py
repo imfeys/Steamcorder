@@ -66,7 +66,7 @@ class FileHandler(FileSystemEventHandler):
         creation_time = time.time()
         self.log_callback(f"New file detected: {file_path}")
 
-        # Wait for the specified delay to ensure file is fully written
+        # Use the current delay setting
         if self.delay_seconds > 0:
             time.sleep(self.delay_seconds)
 
@@ -121,9 +121,10 @@ class MonitoringThread(QThread):
 
     def run(self):
         self.log_signal.emit(f"Monitoring started: {self.watch_directory}")
-        handler = FileHandler(self.log_signal.emit, self.webhook_url, self.delay_seconds)
+        # Store file_handler as an attribute for dynamic updates.
+        self.file_handler = FileHandler(self.log_signal.emit, self.webhook_url, self.delay_seconds)
         self.observer = Observer()
-        self.observer.schedule(handler, path=self.watch_directory, recursive=False)
+        self.observer.schedule(self.file_handler, path=self.watch_directory, recursive=False)
         self.observer.start()
         self.observer.join()
 
@@ -132,6 +133,11 @@ class MonitoringThread(QThread):
             self.observer.stop()
             self.observer.join()
             self.log_signal.emit("Monitoring stopped.")
+
+    def update_delay(self, new_delay):
+        if hasattr(self, 'file_handler'):
+            self.file_handler.delay_seconds = new_delay
+            self.log_signal.emit(f"Updated upload delay to {new_delay} seconds.")
 
 def resource_path(relative_path):
     """ Get the absolute path to the resource (needed for PyInstaller onefile mode) """
@@ -214,7 +220,7 @@ class SettingsDialog(QDialog):
 class ScreenshotUploaderApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Steamcorder v0.5")
+        self.setWindowTitle("Steamcorder v0.5.1")
         self.setWindowIcon(QIcon(resource_path("icon.ico")))
         self.setGeometry(100, 100, 500, 400)
         
@@ -228,7 +234,7 @@ class ScreenshotUploaderApp(QWidget):
 
         # System tray icon
         self.tray_icon = QSystemTrayIcon(QIcon(resource_path("icon.ico")), self)
-        self.tray_icon.setToolTip("Steamcorder v0.")
+        self.tray_icon.setToolTip("Steamcorder v0.5.1")
         self.tray_menu = QMenu(self)
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(self.quit_app)
@@ -308,6 +314,11 @@ class ScreenshotUploaderApp(QWidget):
         main_layout.addWidget(self.log_text)
         
         self.setLayout(main_layout)
+        
+        # Automatically resume monitoring if previously active and if valid settings exist
+        if self.config.get("monitoring_active", False):
+            if self.webhook_url and self.watch_directory:
+                self.toggle_monitoring()
 
     def open_settings(self):
         try:
@@ -315,6 +326,10 @@ class ScreenshotUploaderApp(QWidget):
             result = dlg.exec()
             if result == QDialog.DialogCode.Accepted:
                 self.config = load_config()
+                # If monitoring is active, update the delay immediately
+                if self.monitoring_thread and self.monitoring_thread.isRunning():
+                    new_delay = self.config.get("upload_delay", 2)
+                    self.monitoring_thread.update_delay(new_delay)
         except Exception as e:
             print("[ERROR] Opening settings:", e)
 
@@ -353,6 +368,8 @@ class ScreenshotUploaderApp(QWidget):
             self.monitoring_thread.wait()
             self.monitoring_thread = None
             self.monitor_button.setText("Start Monitoring")
+            self.config["monitoring_active"] = False
+            save_config(self.config)
         else:
             if not self.webhook_url:
                 QMessageBox.warning(self, "Error", "Please enter a webhook URL.")
@@ -362,6 +379,8 @@ class ScreenshotUploaderApp(QWidget):
             self.monitoring_thread.log_signal.connect(self.log)
             self.monitoring_thread.start()
             self.monitor_button.setText("Stop Monitoring")
+            self.config["monitoring_active"] = True
+            save_config(self.config)
 
     def closeEvent(self, event):
         if self.config.get("minimize_on_exit", False):
@@ -377,6 +396,8 @@ class ScreenshotUploaderApp(QWidget):
             if self.monitoring_thread and self.monitoring_thread.isRunning():
                 self.monitoring_thread.stop()
                 self.monitoring_thread.wait()
+                self.config["monitoring_active"] = False
+                save_config(self.config)
             event.accept()
 
     def log(self, message):
@@ -402,7 +423,7 @@ if __name__ == "__main__":
     config = load_config()
     DELETE_AFTER_UPLOAD = config.get("delete_after_upload", False)
 
-    myappid = 'steamcorder.v0.5'  # Unique identifier for Windows taskbar
+    myappid = 'steamcorder.v0.5.1'  # Unique identifier for Windows taskbar
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(resource_path("icon.ico")))
