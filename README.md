@@ -94,7 +94,7 @@ Contributions are welcome! Feel free to **fork** this repo and submit a **pull r
 ---
 
 ## 📜 License
-This project is licensed under the **MIT License**. Feel free to use and modify it.
+This project is licensed under the **GPL-3.0 license**. Feel free to use and modify it.
 
 ---
 
