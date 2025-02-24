@@ -75,11 +75,6 @@ pyinstaller --noconsole --onefile --icon=icon.ico --add-data "icon.ico;." --add-
 
 ---
 
-## 🔥 Advanced Features
-- **Hidden Webhook URL**: Option to hide the webhook field for security.
-
----
-
 ## 🛠 Tech Stack
 - **Python** (3.8+)
 - **PyQt6** (GUI)
