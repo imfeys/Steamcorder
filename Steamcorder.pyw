@@ -476,6 +476,7 @@ class SteamcorderMainWindow(QMainWindow):
         self.settings_tab.settings_updated.connect(self.update_monitoring_delay)
         self.settings_tab.delete_option_changed.connect(self.update_monitoring_delete_option)
 
+        # Automatically start monitoring on launch if it was active before closing
         if self.config.get("monitoring_active", False):
             if self.config.get("webhook_url") and self.config.get("watch_directory"):
                 self.toggle_monitoring()
@@ -592,6 +593,7 @@ class SteamcorderMainWindow(QMainWindow):
             self.set_status_label(True)
             self.config["monitoring_active"] = True
 
+        # Save the updated monitoring state to the config file
         save_config(self.config)
 
     def log(self, message, level="info"):
@@ -611,6 +613,11 @@ class SteamcorderMainWindow(QMainWindow):
             self.activateWindow()
 
     def closeEvent(self, event):
+        """
+        Handles the window close event.
+        If 'minimize_on_exit' is true, it hides the window.
+        Otherwise, it quits the application without changing the 'monitoring_active' setting.
+        """
         if self.config.get("minimize_on_exit", False):
             event.ignore()
             self.hide()
@@ -621,13 +628,16 @@ class SteamcorderMainWindow(QMainWindow):
                 2000
             )
         else:
-            if self.monitoring_thread and self.monitoring_thread.isRunning():
-                self.config["monitoring_active"] = False
-                save_config(self.config)
-                self.monitoring_thread.stop()
+            event.accept()
             self.quit_app()
 
     def quit_app(self):
+        """
+        Gracefully stops the monitoring thread and exits the application.
+        This is the central point for quitting the app, ensuring cleanup happens correctly.
+        """
+        if self.monitoring_thread and self.monitoring_thread.isRunning():
+            self.monitoring_thread.stop()
         self.tray_icon.hide()
         QApplication.quit()
 
@@ -648,6 +658,7 @@ def main():
     
     window = SteamcorderMainWindow()
 
+    # Hide window on startup if it's supposed to start minimized and monitoring
     if window.config.get("minimize_on_exit", False) and window.config.get("monitoring_active", False):
          window.hide()
     else:
