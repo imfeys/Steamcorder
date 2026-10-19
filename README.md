@@ -1,104 +1,62 @@
-# Steamcorder - Automatically upload Steam Screenshots to Discord
+# Steamcorder
 
-Steamcorder is a **Python-based GUI application** that automatically uploads your Steam screenshots to a **Discord server** via a webhook.
----
+Automatically post your Steam screenshots to a Discord channel.
 
-## 📌 Features
+Take a screenshot in-game with F12 and it appears in Discord a few seconds later. You don't need Python or any other install: download one `.exe` and run it.
 
-✅ **Automatic Upload**: Detects new Steam screenshots and uploads them to a Discord webhook.  
-✅ **Customizable Delay**: Set a delay before uploading to ensure files are fully saved.  
-✅ **File Filtering**: Supports popular image formats: `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`.  
-✅ **Minimize to Tray**: Keeps the app running in the background.  
-✅ **Startup Option**: Can start with Windows.  
-✅ **Easy-to-Use GUI**: Built with **PyQt6** for a smooth user experience.  
+<p align="center">
+  <img src="docs/home.png" width="380" alt="Steamcorder main screen">
+  <img src="docs/settings.png" width="380" alt="Steamcorder settings">
+</p>
 
-TO DO LIST CURRENTLY:
-redesign GUI,
-New logo,
-exe file
+## Download
 
----
+Get **`Steamcorder.exe`** from the [latest release](https://github.com/imfeys/Steamcorder/releases/latest) and double-click it.
 
-## 📦 Installation
+> Windows SmartScreen may warn you because the app isn't code-signed. Click **More info → Run anyway**.
 
-### 1️⃣ Prerequisites
-Ensure you have **Python 3.8+** installed. You can download it from [Python.org](https://www.python.org/downloads/).
+## Setup (2 minutes)
 
-### 2️⃣ Install Dependencies
-```sh
-pip install -r requirements.txt
+1. **Turn on uncompressed screenshots in Steam.**
+   Steam → Settings → In Game → enable *Save an uncompressed copy of my screenshots* and pick a folder.
+2. **Choose that folder in Steamcorder.**
+   Settings → *Browse*.
+3. **Create a Discord webhook.**
+   In Discord: Server Settings → Integrations → Webhooks → *New Webhook* → *Copy Webhook URL*.
+   Paste it into Steamcorder and click *Test*.
+4. **Click _Start watching_.** That's it.
+
+Settings save automatically. Steamcorder remembers whether it was watching and picks up where it left off next time.
+
+## Options
+
+| Option | What it does |
+| --- | --- |
+| Upload delay | Extra wait after a screenshot is saved, before it's posted. |
+| Delete after uploading | Removes the local file once Discord has it. |
+| Keep running in the tray | Closing the window hides it to the tray instead of quitting. |
+| Start with Windows | Launches quietly in the tray when you sign in. |
+
+Settings are stored in `%APPDATA%\Steamcorder\config.json`.
+
+**Large screenshots:** Discord limits upload size per server (10 MB without boosts). Uncompressed 4K PNGs can exceed that. If one does, Steamcorder tells you in the activity list.
+
+## Building it yourself
+
+Every push to `main` builds the `.exe` with GitHub Actions. Pushing a version tag (for example `git tag v1.0.0 && git push --tags`) publishes it as a release.
+
+To build locally on Windows (needs Python 3.9+), run:
+
+```bat
+build.bat
 ```
 
-### 3️⃣ Run the App
-```sh
-python steamcorder.py
-```
+The result is `dist\Steamcorder.exe`. To run from source instead: `pip install -r requirements.txt`, then `python Steamcorder.pyw`.
 
-###   Compile exe yourself
-```sh
-pyinstaller --noconsole --onefile --icon=icon.ico --add-data "icon.ico;." --add-data "icon.png;." --add-data "discord_icon.png;." Steamcorder.py
+## Support
 
-```
+Questions or bugs: [Discord](https://discord.gg/dMvCH93sYX) or [GitHub Issues](https://github.com/imfeys/Steamcorder/issues).
 
----
+## License
 
-## 🔧 Setup & Usage
-
-### 📂 Step 1: Select Your Steam Screenshot Folder
-- Go to **Steam > Settings > In-Game**.
-- Enable **"Save an uncompressed copy of screenshots"**.
-- Choose a folder to save screenshots.
-- Select this folder in **Steamcorder**.
-
-### 🔗 Step 2: Add a Discord Webhook
-- Open Discord, go to **Server Settings > Integrations > Webhooks**.
-- Create a new webhook and copy the **Webhook URL**.
-- Paste it into **Steamcorder**.
-
-### ▶ Step 3: Start Monitoring
-- Click **Start Monitoring** to begin automatic uploads.
-- Screenshots will be detected and uploaded instantly.
-
-### ⚙ Step 4: Adjust Settings (Optional)
-- **Upload Delay**: Prevents partial file uploads.
-- **Minimize to Tray**: Keeps the app running in the background.
-- **Start on Windows Boot**: Auto-starts Steamcorder with Windows.
-
----
-
-## 🎨 Screenshot
-![image](https://github.com/user-attachments/assets/70fa4140-8524-4437-a9aa-358a447a6312)
-![image](https://github.com/user-attachments/assets/267ecb0e-fc2d-430d-aff0-3dee1933e92e)
-
-
-
-
-
----
-
-## 🛠 Tech Stack
-- **Python** (3.8+)
-- **PyQt6** (GUI)
-- **Watchdog** (File monitoring)
-- **Requests** (Webhook API integration)
-
----
-
-## 🚀 Contributing
-Contributions are welcome! Feel free to **fork** this repo and submit a **pull request**.
-
----
-
-## 📜 License
-This project is licensed under the **GPL-3.0 license**. Feel free to use and modify it.
-
----
-
-## 💬 Support
-- **Discord**: [Join our server](https://discord.gg/dMvCH93sYX)
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/your-repo/issues)
-
----
-
-Happy Screenshot Sharing! 🎮📤
-
+[GPL-3.0](LICENSE)
