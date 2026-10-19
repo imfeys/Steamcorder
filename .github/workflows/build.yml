@@ -1,0 +1,44 @@
+name: Build exe
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build Steamcorder.exe
+        run: >
+          pyinstaller --noconfirm --onefile --windowed --name Steamcorder
+          --icon icon.ico --add-data "icon.ico;." --add-data "icon.png;."
+          Steamcorder.pyw
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Steamcorder
+          path: dist/Steamcorder.exe
+
+      # Pushing a tag like v1.0.0 publishes the exe as a GitHub release.
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Steamcorder.exe
+          generate_release_notes: true
