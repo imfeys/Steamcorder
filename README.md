@@ -1,13 +1,27 @@
-# Steamcorder
+# Steamcorder: Auto-Upload Steam Screenshots to Discord
 
-Automatically post your Steam screenshots to a Discord channel.
+[![Latest release](https://img.shields.io/github/v/release/imfeys/Steamcorder?label=download&color=5b8cff)](https://github.com/imfeys/Steamcorder/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/imfeys/Steamcorder/total?color=3fcf8e)](https://github.com/imfeys/Steamcorder/releases)
+[![Windows](https://img.shields.io/badge/platform-Windows-0e1014)](https://github.com/imfeys/Steamcorder/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/github/license/imfeys/Steamcorder?color=8a919e)](LICENSE)
 
-Take a screenshot in-game with F12 and it appears in Discord a few seconds later. You don't need Python or any other install: download one `.exe` and run it.
+**Steamcorder** is a free, open-source Windows app that **automatically shares your Steam screenshots to a Discord channel**. Press F12 in any Steam game and the screenshot is posted to your Discord server through a webhook a few seconds later. No bot, no manual uploading, and no Python install: it's one `.exe`.
+
+It's built for gaming communities, friend groups and clan servers that want a shared `#screenshots` channel that fills itself.
 
 <p align="center">
-  <img src="docs/home.png" width="380" alt="Steamcorder main screen">
-  <img src="docs/settings.png" width="380" alt="Steamcorder settings">
+  <img src="docs/home.png" width="380" alt="Steamcorder main window watching the Steam screenshot folder and uploading to Discord">
+  <img src="docs/settings.png" width="380" alt="Steamcorder settings: Steam screenshot folder, Discord webhook URL and upload options">
 </p>
+
+## Features
+
+- **Automatic Steam → Discord uploads**: watches your Steam screenshot folder and posts every new screenshot.
+- **Discord webhooks**: no bot account or server permissions to set up; paste one URL.
+- **Runs quietly in the tray** and can **start with Windows**.
+- **Reliable**: waits until each file is fully saved and retries when Discord rate-limits.
+- **Optional cleanup**: delete screenshots after they're uploaded.
+- **Supports PNG, JPG, GIF, BMP and WebP.**
 
 ## Download
 
@@ -41,9 +55,26 @@ Settings are stored in `%APPDATA%\Steamcorder\config.json`.
 
 **Large screenshots:** Discord limits upload size per server (10 MB without boosts). Uncompressed 4K PNGs can exceed that. If one does, Steamcorder tells you in the activity list.
 
+## FAQ
+
+### How do I automatically send Steam screenshots to Discord?
+Install Steamcorder, point it at your Steam screenshot folder, paste a Discord webhook URL and click *Start watching*. Every F12 screenshot is then posted to that channel.
+
+### Does it need a Discord bot?
+No. It uses a standard Discord webhook, which any server admin can create in about 30 seconds.
+
+### Where does Steam save screenshots?
+Steam stores compressed copies under `Steam\userdata\<id>\760\remote`. Steamcorder uses the *uncompressed copy* folder you pick under Steam → Settings → In Game, which is easier to find and gives full quality.
+
+### Does it work with non-Steam screenshots?
+Yes. It uploads any new image saved to the folder you choose, whether it comes from ShareX, the Xbox Game Bar, NVIDIA or anything else.
+
+### Is it safe?
+It's open source. It only reads the one folder you choose and only talks to the Discord webhook you provide.
+
 ## Building it yourself
 
-Every push to `main` builds the `.exe` with GitHub Actions. Pushing a version tag (for example `git tag v1.0.0 && git push --tags`) publishes it as a release.
+Every push to `main` builds the `.exe` with GitHub Actions. To publish a release, open **Actions → Build exe → Run workflow** and enter a version such as `1.1.0`. Pushing a `v1.1.0` tag works too.
 
 To build locally on Windows (needs Python 3.9+), run:
 
