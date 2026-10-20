@@ -16,17 +16,17 @@ import requests
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from PyQt6.QtCore import QObject, QPointF, QSize, Qt, QTimer, QUrl, pyqtSignal
-from PyQt6.QtGui import QColor, QDesktopServices, QIcon, QPainter, QPen, QPixmap
-from PyQt6.QtNetwork import QLocalServer, QLocalSocket
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QObject, QPointF, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QColor, QDesktopServices, QIcon, QPainter, QPalette, QPen, QPixmap
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
+from PySide6.QtWidgets import (
     QApplication, QCheckBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QMainWindow, QMenu, QMessageBox, QPushButton,
     QSlider, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
 APP_NAME = "Steamcorder"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 DISCORD_INVITE = "https://discord.gg/dMvCH93sYX"
 IS_WINDOWS = sys.platform == "win32"
 IS_FROZEN = getattr(sys, "frozen", False)
@@ -210,9 +210,9 @@ class _NewFileHandler(FileSystemEventHandler):
 
 class Uploader(QObject):
     """Watches a folder and posts new screenshots to Discord on background threads."""
-    log = pyqtSignal(str, str)  # level, message
-    uploaded = pyqtSignal()
-    test_finished = pyqtSignal(bool, str)  # ok, message
+    log = Signal(str, str)  # level, message
+    uploaded = Signal()
+    test_finished = Signal(bool, str)  # ok, message
 
     def __init__(self, settings):
         super().__init__()
@@ -411,7 +411,9 @@ def make_check_image():
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    pen = QPen(QColor("#ffffff"), 4, cap=Qt.PenCapStyle.RoundCap, join=Qt.PenJoinStyle.RoundJoin)
+    pen = QPen(QColor("#ffffff"), 4)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     painter.setPen(pen)
     painter.drawPolyline([QPointF(8, 17), QPointF(14, 23), QPointF(25, 10)])
     painter.end()
@@ -523,8 +525,8 @@ class ActivityList(QListWidget):
 
 
 class HomePage(QWidget):
-    toggle_requested = pyqtSignal()
-    settings_requested = pyqtSignal()
+    toggle_requested = Signal()
+    settings_requested = Signal()
 
     def __init__(self):
         super().__init__()
@@ -543,7 +545,7 @@ class HomePage(QWidget):
         titles.addWidget(label("Steam screenshots → Discord", "small"))
         settings_btn = QPushButton("Settings")
         settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        settings_btn.clicked.connect(self.settings_requested)
+        settings_btn.clicked.connect(lambda: self.settings_requested.emit())
         header.addWidget(logo)
         header.addSpacing(6)
         header.addLayout(titles, 1)
@@ -565,7 +567,7 @@ class HomePage(QWidget):
         self.status_detail = label("", "muted", wrap=True)
         self.toggle_btn = QPushButton(objectName="primary")
         self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.toggle_btn.clicked.connect(self.toggle_requested)
+        self.toggle_btn.clicked.connect(lambda: self.toggle_requested.emit())
         card_layout.addLayout(status_row)
         card_layout.addWidget(self.status_detail)
         card_layout.addSpacing(12)
@@ -644,9 +646,9 @@ HOW_TO = (
 
 
 class SettingsPage(QWidget):
-    back_requested = pyqtSignal()
-    changed = pyqtSignal(str)  # name of the setting that changed
-    test_requested = pyqtSignal(str)
+    back_requested = Signal()
+    changed = Signal(str)  # name of the setting that changed
+    test_requested = Signal(str)
 
     def __init__(self, settings):
         super().__init__()
@@ -659,7 +661,7 @@ class SettingsPage(QWidget):
         header = QHBoxLayout()
         back_btn = QPushButton("← Back")
         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        back_btn.clicked.connect(self.back_requested)
+        back_btn.clicked.connect(lambda: self.back_requested.emit())
         titles = QVBoxLayout()
         titles.setSpacing(0)
         titles.addWidget(label("Settings", "title"))
@@ -735,7 +737,9 @@ class SettingsPage(QWidget):
         help_btn.clicked.connect(self._show_help)
         support_btn = QPushButton("Get support", objectName="link")
         support_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(DISCORD_INVITE)))
-        for btn in (help_btn, support_btn):
+        licenses_btn = QPushButton("Licenses", objectName="link")
+        licenses_btn.clicked.connect(self._show_licenses)
+        for btn in (help_btn, support_btn, licenses_btn):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             footer.addWidget(btn)
         footer.addStretch(1)
@@ -823,6 +827,17 @@ class SettingsPage(QWidget):
         widget.setVisible(bool(text))
         widget.setProperty("tone", tone)
         repolish(widget)
+
+    def _show_licenses(self):
+        try:
+            notices = Path(resource_path("THIRD_PARTY_NOTICES.md")).read_text(encoding="utf-8")
+        except OSError:
+            notices = "Third-party notices are available at https://github.com/imfeys/Steamcorder"
+        box = QMessageBox(self)
+        box.setWindowTitle("Licenses")
+        box.setTextFormat(Qt.TextFormat.MarkdownText)
+        box.setText(f"**{APP_NAME} {APP_VERSION}**  \nCopyright © imfeys. All rights reserved.\n\n{notices}")
+        box.exec()
 
     def _show_help(self):
         box = QMessageBox(self)
@@ -1019,6 +1034,9 @@ def main():
 
     app.setStyle("Fusion")
     app.setStyleSheet(build_stylesheet())
+    palette = app.palette()
+    palette.setColor(QPalette.ColorRole.Link, QColor(COLORS["accent_hover"]))
+    app.setPalette(palette)
 
     settings = Settings.load()
     window = MainWindow(settings)
