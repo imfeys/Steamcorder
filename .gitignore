@@ -4,3 +4,8 @@ build/
 dist/
 *.spec
 config.json
+steam/content/
+steam/output/
+steam/steamcmd/
+steam-dist/
+steam-work/

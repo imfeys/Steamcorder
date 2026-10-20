@@ -39,6 +39,21 @@ jobs:
           name: Steamcorder
           path: dist/Steamcorder.exe
 
+      # Folder build for Steam: SteamPipe uploads a directory, and keeping
+      # Qt as separate files keeps it replaceable as the LGPL requires.
+      - name: Build Steam package
+        run: |
+          pyinstaller --noconfirm --onedir --windowed --name Steamcorder `
+            --distpath steam-dist --workpath steam-work `
+            --icon icon.ico --add-data "icon.ico;." --add-data "icon.png;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." `
+            Steamcorder.pyw
+          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md steam-dist/Steamcorder/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Steamcorder-steam
+          path: steam-dist/Steamcorder/
+
       # Pushing a tag like v1.0.0, or running this workflow by hand with a
       # version, publishes the exe as a GitHub release.
       - name: Publish release
