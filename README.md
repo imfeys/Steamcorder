@@ -3,9 +3,9 @@
 [![Latest release](https://img.shields.io/github/v/release/imfeys/Steamcorder?label=download&color=5b8cff)](https://github.com/imfeys/Steamcorder/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/imfeys/Steamcorder/total?color=3fcf8e)](https://github.com/imfeys/Steamcorder/releases)
 [![Windows](https://img.shields.io/badge/platform-Windows-0e1014)](https://github.com/imfeys/Steamcorder/releases/latest)
-[![License: GPL-3.0](https://img.shields.io/github/license/imfeys/Steamcorder?color=8a919e)](LICENSE)
+[![License](https://img.shields.io/badge/license-proprietary-8a919e)](LICENSE)
 
-**Steamcorder** is a free, open-source Windows app that **automatically shares your Steam screenshots to a Discord channel**. Press F12 in any Steam game and the screenshot is posted to your Discord server through a webhook a few seconds later. No bot, no manual uploading, and no Python install: it's one `.exe`.
+**Steamcorder** is a free Windows app that **automatically shares your Steam screenshots to a Discord channel**. Press F12 in any Steam game and the screenshot is posted to your Discord server through a webhook a few seconds later. No bot, no manual uploading, and no Python install: it's one `.exe`.
 
 It's built for gaming communities, friend groups and clan servers that want a shared `#screenshots` channel that fills itself.
 
@@ -70,19 +70,11 @@ Steam stores compressed copies under `Steam\userdata\<id>\760\remote`. Steamcord
 Yes. It uploads any new image saved to the folder you choose, whether it comes from ShareX, the Xbox Game Bar, NVIDIA or anything else.
 
 ### Is it safe?
-It's open source. It only reads the one folder you choose and only talks to the Discord webhook you provide.
+Yes. It only reads the one folder you choose and only talks to the Discord webhook you provide. Nothing else is collected or sent anywhere.
 
-## Building it yourself
+## Releasing (maintainer)
 
-Every push to `main` builds the `.exe` with GitHub Actions. To publish a release, open **Actions → Build exe → Run workflow** and enter a version such as `1.1.0`. Pushing a `v1.1.0` tag works too.
-
-To build locally on Windows (needs Python 3.9+), run:
-
-```bat
-build.bat
-```
-
-The result is `dist\Steamcorder.exe`. To run from source instead: `pip install -r requirements.txt`, then `python Steamcorder.pyw`.
+Open **Actions → Build exe → Run workflow** and enter a version such as `1.1.0`. This builds `Steamcorder.exe` and publishes the release. Run `build.bat` to build locally.
 
 ## Support
 
@@ -90,4 +82,4 @@ Questions or bugs: [Discord](https://discord.gg/dMvCH93sYX) or [GitHub Issues](h
 
 ## License
 
-[GPL-3.0](LICENSE)
+Copyright © imfeys. All rights reserved. Steamcorder is proprietary software: see [LICENSE](LICENSE). It bundles open-source components listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
