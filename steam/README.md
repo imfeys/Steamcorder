@@ -71,7 +71,7 @@ Everything needed to put Steamcorder on Steam: the build, the upload script, sto
 - OS: Windows 10 64-bit
 - Processor: Any 64-bit processor
 - Memory: 512 MB RAM
-- Storage: 300 MB available space
+- Storage: 50 MB available space
 - Network: Broadband internet connection
 
 ## 5. Before launch

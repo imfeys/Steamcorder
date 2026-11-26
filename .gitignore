@@ -9,3 +9,6 @@ steam/output/
 steam/steamcmd/
 steam-dist/
 steam-work/
+
+# Rust
+/target/

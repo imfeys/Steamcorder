@@ -20,39 +20,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: "3.12"
-          cache: pip
+          components: clippy, rustfmt
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt pyinstaller
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
 
       - name: Build Steamcorder.exe
-        run: >
-          pyinstaller --noconfirm --onefile --windowed --name Steamcorder
-          --icon icon.ico --add-data "icon.ico;." --add-data "icon.png;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;."
-          Steamcorder.pyw
+        run: cargo build --release
+
+      # One self-contained exe. The Steam package is the same exe plus the
+      # license files, since SteamPipe uploads a directory.
+      - name: Collect files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist, steam-dist | Out-Null
+          Copy-Item target/release/Steamcorder.exe dist/
+          Copy-Item target/release/Steamcorder.exe, LICENSE, THIRD_PARTY_NOTICES.md steam-dist/
 
       - uses: actions/upload-artifact@v4
         with:
           name: Steamcorder
           path: dist/Steamcorder.exe
 
-      # Folder build for Steam: SteamPipe uploads a directory, and keeping
-      # Qt as separate files keeps it replaceable as the LGPL requires.
-      - name: Build Steam package
-        run: |
-          pyinstaller --noconfirm --onedir --windowed --name Steamcorder `
-            --distpath steam-dist --workpath steam-work `
-            --icon icon.ico --add-data "icon.ico;." --add-data "icon.png;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." `
-            Steamcorder.pyw
-          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md steam-dist/Steamcorder/
-
       - uses: actions/upload-artifact@v4
         with:
           name: Steamcorder-steam
-          path: steam-dist/Steamcorder/
+          path: steam-dist/
 
       # Pushing a tag like v1.0.0, or running this workflow by hand with a
       # version, publishes the exe as a GitHub release.

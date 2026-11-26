@@ -1,8 +1,9 @@
 @echo off
-rem Builds dist\Steamcorder.exe. Needs Python 3.9+ installed.
+rem Builds dist\Steamcorder.exe. Needs the Rust toolchain (https://rustup.rs) and the MSVC C++ build tools.
 cd /d "%~dp0"
-python -m pip install -r requirements.txt pyinstaller || exit /b 1
-python -m PyInstaller --noconfirm --onefile --windowed --name Steamcorder ^
-  --icon icon.ico --add-data "icon.ico;." --add-data "icon.png;." --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." Steamcorder.pyw || exit /b 1
+cargo test || exit /b 1
+cargo build --release || exit /b 1
+if not exist dist mkdir dist
+copy /y target\release\Steamcorder.exe dist\Steamcorder.exe >nul || exit /b 1
 echo.
 echo Done: dist\Steamcorder.exe

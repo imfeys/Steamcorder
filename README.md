@@ -74,7 +74,7 @@ Yes. It only reads the one folder you choose and only talks to the Discord webho
 
 ## Releasing (maintainer)
 
-Open **Actions → Build exe → Run workflow** and enter a version such as `1.1.0`. This builds `Steamcorder.exe` and publishes the release. Run `build.bat` to build locally.
+Open **Actions → Build exe → Run workflow** and enter a version such as `1.1.0`. This builds `Steamcorder.exe` and publishes the release. Run `build.bat` to build locally (needs the Rust toolchain from https://rustup.rs and the MSVC C++ build tools).
 
 ## Support
 
