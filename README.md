@@ -2,7 +2,7 @@
   <img src="icon.png" width="96" alt="Steamcorder logo">
 </p>
 
-<h1 align="center">Steamcorder</h1>
+<h1 align="center">Steamcorder: Auto-Upload Steam Screenshots to Discord</h1>
 
 <p align="center">
   <strong>Your Steam screenshots, posted to Discord automatically.</strong><br>
@@ -27,7 +27,7 @@
   <img src="docs/setup.png" width="280" alt="Steamcorder's built-in setup guide">
 </p>
 
-**Steamcorder** is a free Windows app that shares your Steam screenshots to a Discord channel. It uses a Discord webhook, so there's no bot to invite, nothing to upload by hand, and nothing to install: it's a single ~10 MB `.exe`.
+**Steamcorder** is a free Windows app that automatically sends your Steam screenshots to a Discord channel. It uses a Discord webhook, so there's no bot to invite, nothing to upload by hand, and nothing to install: it's a single ~10 MB `.exe`.
 
 It's made for gaming communities, friend groups and clan servers that want a shared screenshots channel that fills itself.
 
