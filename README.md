@@ -14,6 +14,7 @@
 </p>
 
 <p align="center">
+  <a href="https://imfeys.github.io/Steamcorder/"><img src="https://img.shields.io/badge/website-imfeys.github.io%2FSteamcorder-5b8cff" alt="Website"></a>
   <a href="https://github.com/imfeys/Steamcorder/releases/latest"><img src="https://img.shields.io/github/v/release/imfeys/Steamcorder?label=latest&color=5b8cff" alt="Latest release"></a>
   <a href="https://github.com/imfeys/Steamcorder/releases"><img src="https://img.shields.io/github/downloads/imfeys/Steamcorder/total?color=3fcf8e" alt="Downloads"></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0e1014" alt="Windows 10 and 11">

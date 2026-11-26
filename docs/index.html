@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Steamcorder: Auto-Upload Steam Screenshots to Discord (Free Windows App)</title>
+  <meta name="description" content="Steamcorder automatically posts your Steam screenshots to a Discord channel. Press F12 in any game and it's shared a few seconds later. Free, no bot needed, one small .exe for Windows 10 and 11.">
+  <link rel="canonical" href="https://imfeys.github.io/Steamcorder/">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="theme-color" content="#0e1014">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Steamcorder">
+  <meta property="og:title" content="Steamcorder: Auto-Upload Steam Screenshots to Discord">
+  <meta property="og:description" content="Press F12 in any Steam game and the screenshot is posted to your Discord channel. Free Windows app, no bot needed.">
+  <meta property="og:url" content="https://imfeys.github.io/Steamcorder/">
+  <meta property="og:image" content="https://imfeys.github.io/Steamcorder/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Steamcorder: auto-post your Steam screenshots to Discord">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Steamcorder: Auto-Upload Steam Screenshots to Discord">
+  <meta name="twitter:description" content="Press F12 in any Steam game and the screenshot is posted to your Discord channel. Free Windows app, no bot needed.">
+  <meta name="twitter:image" content="https://imfeys.github.io/Steamcorder/social-preview.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Steamcorder",
+    "description": "Automatically posts new Steam screenshots to a Discord channel through a webhook.",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Windows 10, Windows 11",
+    "softwareVersion": "1.2.0",
+    "url": "https://imfeys.github.io/Steamcorder/",
+    "downloadUrl": "https://github.com/imfeys/Steamcorder/releases/latest/download/Steamcorder.exe",
+    "image": "https://imfeys.github.io/Steamcorder/social-preview.png",
+    "screenshot": "https://imfeys.github.io/Steamcorder/home.png",
+    "fileSize": "10MB",
+    "author": { "@type": "Person", "name": "imfeys", "url": "https://github.com/imfeys" },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "How do I automatically send Steam screenshots to Discord?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Install Steamcorder, point it at your Steam screenshot folder, paste a Discord webhook URL and click Start watching. Every F12 screenshot is then posted to that channel." } },
+      { "@type": "Question", "name": "Does it need a Discord bot?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. It uses a standard Discord webhook, which any server admin can create in about 30 seconds." } },
+      { "@type": "Question", "name": "Where does Steam save screenshots?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Steam stores compressed copies under Steam\\userdata\\<id>\\760\\remote. Steamcorder uses the uncompressed copy folder you pick under Steam, Settings, In Game, which is easier to find and gives full quality." } },
+      { "@type": "Question", "name": "Does it work with non-Steam screenshots?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. It uploads any new image saved to the folder you choose, whether it comes from ShareX, the Xbox Game Bar, NVIDIA or anything else." } },
+      { "@type": "Question", "name": "Is Steamcorder safe?",
+        "acceptedAnswer": { "@type": "Answer", "text": "It only reads the one folder you choose and only talks to the Discord webhook you provide. Nothing else is collected or sent anywhere." } },
+      { "@type": "Question", "name": "Is Steamcorder free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Steamcorder is free to download and use on Windows 10 and 11." } }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0e1014; --surface: #161920; --raised: #1e222b; --border: #2a2f3a;
+      --text: #e7e9ee; --muted: #8a919e; --accent: #5b8cff; --accent-hover: #7aa2ff;
+      --success: #3fcf8e; --radius: 14px;
+      --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Inter", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body {
+      margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent-hover); }
+    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+    img { max-width: 100%; height: auto; display: block; }
+    .wrap { width: min(1120px, 100% - 48px); margin-inline: auto; }
+    .skip { position: absolute; left: -999px; }
+    .skip:focus { left: 16px; top: 16px; background: var(--raised); padding: 8px 12px; z-index: 10; }
+
+    /* Nav */
+    header.nav { position: sticky; top: 0; z-index: 5; background: rgb(14 16 20 / 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+    .nav .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 17px; }
+    .brand img { width: 28px; height: 28px; }
+    .nav nav { margin-left: auto; display: flex; gap: 22px; align-items: center; }
+    .nav nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+    .nav nav a:hover { color: var(--text); }
+    @media (max-width: 720px) { .nav nav a:not(.btn) { display: none; } }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 10px;
+      font-weight: 600; text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--raised);
+      transition: background .15s, border-color .15s;
+    }
+    .btn:hover { border-color: var(--muted); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn.small { padding: 7px 14px; font-size: 14px; }
+    .btn.large { padding: 15px 26px; font-size: 17px; }
+    .btn svg { width: 18px; height: 18px; flex: none; }
+
+    /* Hero */
+    .hero { padding: 80px 0 64px; background: radial-gradient(900px 480px at 80% 10%, rgb(91 140 255 / 0.14), transparent 70%); }
+    .hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; }
+    @media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; } .hero { padding-top: 48px; } }
+    .eyebrow { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; border: 1px solid var(--border); background: var(--surface); padding: 5px 12px; border-radius: 999px; }
+    .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+    h1 { font-size: clamp(36px, 5.4vw, 58px); line-height: 1.08; letter-spacing: -0.02em; margin: 20px 0 18px; }
+    h1 .accent { color: var(--accent-hover); }
+    .lede { font-size: 19px; color: #c3c8d2; max-width: 34em; margin: 0 0 30px; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .meta { margin-top: 16px; color: var(--muted); font-size: 14px; }
+    .shot {
+      border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
+      box-shadow: 0 30px 80px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.02);
+      overflow: hidden; margin-inline: auto; max-width: 420px;
+    }
+    .shot .bar { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); background: #12151b; }
+    .shot .bar img { width: 16px; height: 16px; }
+
+    /* Sections */
+    section { padding: 72px 0; }
+    section.alt { background: #11141a; border-block: 1px solid var(--border); }
+    h2 { font-size: clamp(28px, 3.4vw, 38px); letter-spacing: -0.015em; margin: 0 0 12px; line-height: 1.15; }
+    .sub { color: var(--muted); font-size: 18px; margin: 0 0 40px; max-width: 40em; }
+
+    /* Flow */
+    .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 18px; align-items: stretch; }
+    .flow .step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .flow .arrow { align-self: center; color: var(--muted); font-size: 24px; }
+    .flow .key { display: inline-block; font: 600 15px var(--font); border: 1px solid var(--border); border-bottom-width: 3px; border-radius: 8px; padding: 4px 12px; background: var(--raised); }
+    .flow h3 { margin: 14px 0 6px; font-size: 18px; }
+    .flow p { margin: 0; color: var(--muted); }
+    .channel { display: inline-flex; gap: 6px; align-items: center; color: var(--text); background: var(--raised); border-radius: 8px; padding: 4px 10px; font-weight: 600; }
+    @media (max-width: 820px) { .flow { grid-template-columns: 1fr; } .flow .arrow { transform: rotate(90deg); justify-self: center; } }
+
+    /* Features */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .card .ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: rgb(91 140 255 / 0.14); color: var(--accent-hover); margin-bottom: 14px; }
+    .card .ic svg { width: 22px; height: 22px; }
+    .card h3 { margin: 0 0 6px; font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); }
+
+    /* Gallery */
+    .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    @media (max-width: 900px) { .gallery { grid-template-columns: 1fr; max-width: 460px; margin-inline: auto; } }
+    .gallery figure { margin: 0; }
+    .gallery figcaption { color: var(--muted); font-size: 15px; text-align: center; margin-top: 12px; }
+
+    /* Setup */
+    ol.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; counter-reset: s; }
+    @media (max-width: 760px) { ol.steps { grid-template-columns: 1fr; } }
+    ol.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 22px 22px 70px; position: relative; }
+    ol.steps li::before { content: counter(s); position: absolute; left: 22px; top: 22px; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; }
+    ol.steps h3 { margin: 2px 0 6px; font-size: 18px; }
+    ol.steps p { margin: 0; color: var(--muted); }
+    em.ui { font-style: normal; color: var(--text); background: var(--raised); border-radius: 5px; padding: 1px 6px; font-size: 0.94em; }
+
+    /* FAQ */
+    .faq { max-width: 820px; }
+    details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
+    summary { cursor: pointer; padding: 18px 22px; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--muted); font-size: 22px; line-height: 1; }
+    details[open] summary::after { content: "–"; }
+    details p { margin: 0; padding: 0 22px 20px; color: #c3c8d2; }
+    code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.9em; background: var(--raised); padding: 1px 6px; border-radius: 5px; }
+
+    /* Final CTA */
+    .final { text-align: center; }
+    .final .sub { margin-inline: auto; }
+    .final .cta { justify-content: center; }
+    .note { color: var(--muted); font-size: 14px; margin-top: 18px; }
+
+    footer { border-top: 1px solid var(--border); padding: 32px 0 40px; color: var(--muted); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; justify-content: space-between; }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+    footer .links { display: flex; flex-wrap: wrap; gap: 18px; }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="./"><img src="icon.png" alt="" width="28" height="28">Steamcorder</a>
+      <nav aria-label="Main">
+        <a href="#features">Features</a>
+        <a href="#setup">Setup</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/imfeys/Steamcorder">GitHub</a>
+        <a class="btn primary small" href="https://github.com/imfeys/Steamcorder/releases/latest/download/Steamcorder.exe">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="title">
+      <div class="wrap">
+        <div>
+          <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Free · Windows 10 &amp; 11 · Version 1.2</span>
+          <h1 id="title">Auto-upload your <span class="accent">Steam screenshots</span> to Discord</h1>
+          <p class="lede">Press F12 in any game. A few seconds later the screenshot is in your server's <strong>#screenshots</strong> channel. No bot, no manual uploading, just one small app in your tray.</p>
+          <div class="cta">
+            <a class="btn primary large" href="https://github.com/imfeys/Steamcorder/releases/latest/download/Steamcorder.exe">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+              Download for Windows
+            </a>
+            <a class="btn large" href="#setup">See how it works</a>
+          </div>
+          <p class="meta">Steamcorder.exe · about 10 MB · nothing to install</p>
+        </div>
+        <div class="shot">
+          <div class="bar"><img src="icon.png" alt="" width="16" height="16">Steamcorder</div>
+          <img src="home.png" width="460" height="640" alt="Steamcorder watching the Steam screenshot folder, with three screenshots uploaded to Discord" fetchpriority="high">
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="how">
+      <div class="wrap">
+        <h2 id="how">How it works</h2>
+        <p class="sub">Steamcorder watches the folder Steam saves your screenshots to and posts each new one through a Discord webhook.</p>
+        <div class="flow">
+          <div class="step"><span class="key">F12</span><h3>Take a screenshot</h3><p>In any Steam game, like you always do.</p></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="step"><img src="icon.png" alt="" width="34" height="34"><h3>Steamcorder spots it</h3><p>It waits until the file is fully saved, then uploads it.</p></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="step"><span class="channel"># screenshots</span><h3>Posted to Discord</h3><p>Your friends see it in your server a few seconds later.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="alt" id="features" aria-labelledby="features-title">
+      <div class="wrap">
+        <h2 id="features-title">Everything you need, nothing you don't</h2>
+        <p class="sub">Built for gaming communities, friend groups and clan servers that want a screenshots channel that fills itself.</p>
+        <div class="grid">
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
+            <h3>Automatic uploads</h3><p>Every new screenshot in your Steam folder is posted to Discord without you lifting a finger.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg></div>
+            <h3>No bot needed</h3><p>Paste one Discord webhook URL and click <em class="ui">Test</em>. No bot account or server permissions to set up.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 17h.01M11 17h.01"/><path d="M12 3v7m0 0-3-3m3 3 3-3"/></svg></div>
+            <h3>Lives in your tray</h3><p>Runs quietly in the background and can start with Windows, so it's always ready.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <h3>Reliable</h3><p>Waits until each file is completely saved, and retries when Discord is busy or rate-limits.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></div>
+            <h3>Optional cleanup</h3><p>Delete screenshots after they're uploaded to keep your disk tidy.</p>
+          </div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/></svg></div>
+            <h3>Any image, any tool</h3><p>PNG, JPG, GIF, BMP and WebP, from Steam, ShareX, Xbox Game Bar, NVIDIA and more.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="look">
+      <div class="wrap">
+        <h2 id="look">A small app that stays out of your way</h2>
+        <p class="sub">A clean dark window, a handful of options, and a built-in setup guide.</p>
+        <div class="gallery">
+          <figure><div class="shot"><img src="home.png" width="460" height="640" loading="lazy" alt="Main window showing recent uploads to Discord"></div><figcaption>See every upload as it happens</figcaption></figure>
+          <figure><div class="shot"><img src="settings.png" width="460" height="640" loading="lazy" alt="Settings: screenshot folder, Discord webhook, upload delay and options"></div><figcaption>Settings save automatically</figcaption></figure>
+          <figure><div class="shot"><img src="setup.png" width="460" height="640" loading="lazy" alt="Built-in guide explaining how to set up Steamcorder"></div><figcaption>Setup guide built in</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="alt" id="setup" aria-labelledby="setup-title">
+      <div class="wrap">
+        <h2 id="setup-title">Set up in 2 minutes</h2>
+        <p class="sub">Download <code>Steamcorder.exe</code>, double-click it, then:</p>
+        <ol class="steps">
+          <li><h3>Turn on uncompressed screenshots in Steam</h3><p>Steam → Settings → In Game → enable <em class="ui">Save an uncompressed copy of my screenshots</em> and pick a folder.</p></li>
+          <li><h3>Choose that folder in Steamcorder</h3><p>Open <em class="ui">Settings</em> and click <em class="ui">Browse</em>.</p></li>
+          <li><h3>Create a Discord webhook</h3><p>In Discord: Server Settings → Integrations → Webhooks → <em class="ui">New Webhook</em> → <em class="ui">Copy Webhook URL</em>. Paste it into Steamcorder and click <em class="ui">Test</em>.</p></li>
+          <li><h3>Click Start watching</h3><p>That's it. Steamcorder remembers your settings and picks up where it left off next time.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="faq" aria-labelledby="faq-title">
+      <div class="wrap faq">
+        <h2 id="faq-title">Frequently asked questions</h2>
+        <details><summary>How do I automatically send Steam screenshots to Discord?</summary><p>Install Steamcorder, point it at your Steam screenshot folder, paste a Discord webhook URL and click <em class="ui">Start watching</em>. Every F12 screenshot is then posted to that channel.</p></details>
+        <details><summary>Does it need a Discord bot?</summary><p>No. It uses a standard Discord webhook, which any server admin can create in about 30 seconds.</p></details>
+        <details><summary>Where does Steam save screenshots?</summary><p>Steam stores compressed copies under <code>Steam\userdata\&lt;id&gt;\760\remote</code>. Steamcorder uses the <em class="ui">uncompressed copy</em> folder you pick under Steam → Settings → In Game, which is easier to find and gives full quality.</p></details>
+        <details><summary>Does it work with non-Steam screenshots?</summary><p>Yes. It uploads any new image saved to the folder you choose, whether it comes from ShareX, the Xbox Game Bar, NVIDIA or anything else.</p></details>
+        <details><summary>What about large 4K screenshots?</summary><p>Discord limits upload size per server (10 MB without boosts), and uncompressed 4K PNGs can exceed that. If one does, Steamcorder tells you in its activity list.</p></details>
+        <details><summary>Is it safe?</summary><p>It only reads the one folder you choose and only talks to the Discord webhook you provide. Nothing else is collected or sent anywhere. Windows SmartScreen may warn you because the app isn't code-signed yet: click <em class="ui">More info</em> → <em class="ui">Run anyway</em>.</p></details>
+        <details><summary>Is it free?</summary><p>Yes. Steamcorder is free to download and use on Windows 10 and 11 (64-bit).</p></details>
+        <details><summary>How do I uninstall it?</summary><p>Turn off <em class="ui">Start with Windows</em>, quit it from the tray icon, then delete <code>Steamcorder.exe</code> and the <code>%APPDATA%\Steamcorder</code> folder.</p></details>
+      </div>
+    </section>
+
+    <section class="alt final" aria-labelledby="get">
+      <div class="wrap">
+        <h2 id="get">Start sharing your screenshots</h2>
+        <p class="sub">Free for Windows 10 and 11. One small file, nothing to install.</p>
+        <div class="cta">
+          <a class="btn primary large" href="https://github.com/imfeys/Steamcorder/releases/latest/download/Steamcorder.exe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+            Download Steamcorder
+          </a>
+          <a class="btn large" href="https://discord.gg/dMvCH93sYX">Get support on Discord</a>
+        </div>
+        <p class="note">Looking for older versions or release notes? See <a href="https://github.com/imfeys/Steamcorder/releases">all releases</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© imfeys. Steamcorder is free, proprietary software. Not affiliated with Valve or Discord.</span>
+      <span class="links">
+        <a href="https://github.com/imfeys/Steamcorder">GitHub</a>
+        <a href="https://github.com/imfeys/Steamcorder/issues">Report a bug</a>
+        <a href="https://github.com/imfeys/Steamcorder/blob/main/LICENSE">License</a>
+        <a href="https://github.com/imfeys/Steamcorder/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>
